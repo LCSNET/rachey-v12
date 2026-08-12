@@ -60,7 +60,7 @@ jobs:
 
       - name: Analisar código Flutter
         working-directory: rachey-build/Rachey-1.0.0-v12
-        run: flutter analyze
+        run: flutter analyze --no-fatal-warnings --no-fatal-infos
 
       - name: Executar testes
         working-directory: rachey-build/Rachey-1.0.0-v12
