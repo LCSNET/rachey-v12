@@ -22,7 +22,7 @@ jobs:
           rm -rf rachey-build
           mkdir rachey-build
 
-          unzip -q Rachey-1.0.0-codigo-fonte-v12-circleci.zip -d rachey-build
+          unzip -q Rachey-1.0.0-codigo-fonte-v12-circleci(1).zip -d rachey-build
 
           echo "Conteúdo extraído:"
           find rachey-build -maxdepth 2 -type f | head -50
