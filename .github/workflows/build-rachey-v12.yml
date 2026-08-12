@@ -1,0 +1,100 @@
+name: Build Rachey v12 APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Baixar repositório
+        uses: actions/checkout@v4
+
+      - name: Descompactar código-fonte
+        shell: bash
+        run: |
+          set -e
+          rm -rf rachey-build
+          mkdir rachey-build
+
+          unzip -q Rachey-1.0.0-codigo-fonte-v12-circleci.zip -d rachey-build
+
+          echo "Conteúdo extraído:"
+          find rachey-build -maxdepth 2 -type f | head -50
+
+          test -f rachey-build/Rachey-1.0.0-v12/pubspec.yaml
+
+      - name: Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Instalar Flutter 3.44.8
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.8"
+          channel: stable
+          cache: true
+
+      - name: Verificar Flutter
+        working-directory: rachey-build/Rachey-1.0.0-v12
+        run: |
+          flutter --version
+          flutter doctor -v
+
+      - name: Baixar dependências
+        working-directory: rachey-build/Rachey-1.0.0-v12
+        run: flutter pub get
+
+      - name: Validar Function Appwrite
+        working-directory: rachey-build/Rachey-1.0.0-v12
+        run: |
+          node --check appwrite/functions/rachey_admin/index.js
+          node --check appwrite/functions/rachey_admin/platform.js
+
+      - name: Analisar código Flutter
+        working-directory: rachey-build/Rachey-1.0.0-v12
+        run: flutter analyze
+
+      - name: Executar testes
+        working-directory: rachey-build/Rachey-1.0.0-v12
+        run: flutter test
+
+      - name: Compilar APK v12 para teste
+        working-directory: rachey-build/Rachey-1.0.0-v12
+        run: |
+          flutter build apk --debug \
+            --dart-define=APPWRITE_ENDPOINT=https://nyc.cloud.appwrite.io/v1 \
+            --dart-define=APPWRITE_PROJECT_ID=rachey \
+            --dart-define=APPWRITE_DATABASE_ID=rachey_db \
+            --dart-define=APPWRITE_BUCKET_ID=arquivos \
+            --dart-define=APPWRITE_MAIN_FUNCTION_ID=rachey_admin \
+            --dart-define=APPWRITE_EMAIL_VERIFICATION_URL=https://rachey-auth.appwrite.network/verify.html \
+            --dart-define=APPWRITE_PASSWORD_RECOVERY_URL=https://rachey-auth.appwrite.network/recovery.html
+
+      - name: Preparar APK final
+        working-directory: rachey-build/Rachey-1.0.0-v12
+        run: |
+          mkdir -p release
+          cp build/app/outputs/flutter-apk/app-debug.apk release/Rachey-1.0.0-v12.apk
+
+          sha256sum release/Rachey-1.0.0-v12.apk \
+            > release/Rachey-1.0.0-v12.sha256
+
+          ls -lh release/
+
+      - name: Publicar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Rachey-1.0.0-v12
+          path: |
+            rachey-build/Rachey-1.0.0-v12/release/Rachey-1.0.0-v12.apk
+            rachey-build/Rachey-1.0.0-v12/release/Rachey-1.0.0-v12.sha256
+          if-no-files-found: error
+          retention-days: 30
